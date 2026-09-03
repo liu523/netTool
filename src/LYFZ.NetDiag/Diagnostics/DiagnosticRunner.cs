@@ -34,9 +34,10 @@ internal sealed partial class DiagnosticRunner
         var lanBaseline = new LanBaselineResult([]);
         MonitoringResult? monitoringResult = null;
         string? htmlReportPath = null;
+        var targets = DomainCatalog.BuildTargets(options.ExtraDomains);
 
         await using var logger = new DiagnosticLogger(logPath, progress);
-        await logger.WriteAsync(BuildHeader(options));
+        await logger.WriteAsync(BuildHeader(options, targets));
 
         try
         {
@@ -44,7 +45,6 @@ internal sealed partial class DiagnosticRunner
             lanBaseline = await WriteLanBaselineAsync(logger, networkSnapshot.Gateways, cancellationToken);
             await WritePublicAddressAsync(logger, cancellationToken);
 
-            var targets = DomainCatalog.All;
             var completed = 0;
             using var concurrency = new SemaphoreSlim(4, 4);
             var tasks = targets.Select(async target =>
@@ -94,6 +94,7 @@ internal sealed partial class DiagnosticRunner
                     logger,
                     networkSnapshot,
                     options,
+                    targets,
                     cancellationToken);
                 cancelled |= monitoringResult.Cancelled;
             }
@@ -117,7 +118,7 @@ internal sealed partial class DiagnosticRunner
             await logger.WriteAsync($"读取结束网卡统计失败：{OneLine(ex.Message)}", CancellationToken.None);
         }
 
-        var orderedResults = DomainCatalog.All
+        var orderedResults = targets
             .Where(target => results.ContainsKey(target.Host))
             .Select(target => results[target.Host])
             .ToList();
@@ -147,7 +148,9 @@ internal sealed partial class DiagnosticRunner
         return new DiagnosticRunResult(logPath, htmlReportPath, monitoringResult?.CsvPath, orderedResults, cancelled);
     }
 
-    private static string BuildHeader(DiagnosticRunOptions options)
+    private static string BuildHeader(
+        DiagnosticRunOptions options,
+        IReadOnlyList<DiagnosticTarget> targets)
     {
         var assembly = Assembly.GetExecutingAssembly().GetName();
         var builder = new StringBuilder();
@@ -158,6 +161,12 @@ internal sealed partial class DiagnosticRunner
         builder.AppendLine($"门店名称          ：{SafeUserValue(options.StoreName)}");
         builder.AppendLine($"宽带运营商        ：{SafeUserValue(options.Carrier)}");
         builder.AppendLine($"检测模式          ：{(options.MonitorDuration > TimeSpan.Zero ? $"连续监测 {FormatDuration(options.MonitorDuration)} / 间隔 {options.MonitorInterval.TotalSeconds:F0} 秒" : "快速诊断")}");
+        builder.AppendLine($"诊断域名          ：共 {targets.Count} 个（默认 {DomainCatalog.All.Count} 个，额外 {targets.Count(target => target.IsExtra)} 个）");
+        var extraHosts = targets.Where(target => target.IsExtra).Select(target => target.Host).ToArray();
+        if (extraHosts.Length > 0)
+        {
+            builder.AppendLine($"额外诊断域名      ：{string.Join(", ", extraHosts)}");
+        }
         builder.AppendLine($"工具版本          ：{assembly.Version}");
         builder.AppendLine($"操作系统          ：{RuntimeInformation.OSDescription}");
         builder.AppendLine($"系统架构/进程架构 ：{RuntimeInformation.OSArchitecture}/{RuntimeInformation.ProcessArchitecture}");
@@ -364,7 +373,6 @@ internal sealed partial class DiagnosticRunner
             .OrderBy(address => address.AddressFamily == AddressFamily.InterNetwork ? 0 : 1)
             .Take(target.IsFirstParty ? 3 : 2)
             .ToArray();
-        var traced = false;
         foreach (var address in addressesToTest)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -391,17 +399,40 @@ internal sealed partial class DiagnosticRunner
                 result.CurrentDirectHttpSucceeded |= http.ReceivedResponse;
                 ApplyHttpResult(result, http);
             }
-            else if (target.IsFirstParty && !traced && address.AddressFamily == AddressFamily.InterNetwork)
-            {
-                traced = true;
-                builder.AppendLine("路由跟踪（TCP失败后自动执行，最多18跳）：");
-                builder.Append(await TraceRouteAsync(address, cancellationToken));
-            }
         }
 
         if (addressesToTest.Length == 0)
         {
             builder.AppendLine("没有可用于TCP/TLS测试的系统解析地址。");
+        }
+
+        var traceAddress = result.SystemAddresses
+            .OrderBy(address => address.AddressFamily == AddressFamily.InterNetwork ? 0 : 1)
+            .FirstOrDefault();
+        var traceAddressSource = "系统DNS当前解析节点";
+        if (traceAddress is null)
+        {
+            traceAddress = result.RawDnsAddresses
+                .OrderBy(address => address.AddressFamily == AddressFamily.InterNetwork ? 0 : 1)
+                .FirstOrDefault();
+            traceAddressSource = "指定DNS解析节点";
+        }
+        if (traceAddress is null && target.ComparisonAddress is not null)
+        {
+            traceAddress = target.ComparisonAddress;
+            traceAddressSource = "配置的健康对照IP（DNS无可用地址）";
+        }
+
+        if (traceAddress is not null)
+        {
+            builder.AppendLine($"路由跟踪（每个域名固定执行，目标 {traceAddress}，来源：{traceAddressSource}，最多15跳）：");
+            result.TraceRoute = await TraceRouteAsync(traceAddress, traceAddressSource, cancellationToken);
+            builder.Append(FormatTraceRoute(result.TraceRoute));
+        }
+        else
+        {
+            result.TraceRouteUnavailableReason = "系统DNS、指定DNS均未得到可用IP，无法执行路由跟踪。";
+            builder.AppendLine($"路由跟踪：未执行，{result.TraceRouteUnavailableReason}");
         }
 
         if (target.ComparisonAddress is not null)
@@ -613,14 +644,18 @@ internal sealed partial class DiagnosticRunner
             $"收到 {successful.Length}/3，平均={(average is null ? "-" : $"{average:F1}ms")}，样本=[{string.Join(", ", samples)}]");
     }
 
-    private static async Task<string> TraceRouteAsync(IPAddress address, CancellationToken cancellationToken)
+    private static async Task<TraceRouteResult> TraceRouteAsync(
+        IPAddress address,
+        string addressSource,
+        CancellationToken cancellationToken)
     {
-        var builder = new StringBuilder();
-        for (var ttl = 1; ttl <= 18; ttl++)
+        var hops = new List<TraceRouteHopResult>();
+        var reached = false;
+        for (var ttl = 1; ttl <= 15; ttl++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var replies = await Task.WhenAll(Enumerable.Range(0, 3)
-                .Select(_ => SendPingAsync(address, ttl, cancellationToken)));
+                .Select(_ => SendPingAsync(address, ttl, cancellationToken, 500)));
             var displayAddress = replies
                 .FirstOrDefault(reply => reply?.Address is not null && !reply.Address.Equals(IPAddress.Any))
                 ?.Address?.ToString() ?? "*";
@@ -629,27 +664,44 @@ internal sealed partial class DiagnosticRunner
                 { Status: IPStatus.Success } => $"{reply.RoundtripTime} ms",
                 { Status: IPStatus.TtlExpired } => $"{reply.RoundtripTime} ms",
                 _ => "*"
-            });
-            builder.AppendLine($"  {ttl,2}  {string.Join("  ", samples),-26} {displayAddress}");
-            if (replies.Any(reply => reply?.Status == IPStatus.Success))
+            }).ToArray();
+            var hopReached = replies.Any(reply => reply?.Status == IPStatus.Success);
+            hops.Add(new TraceRouteHopResult(ttl, displayAddress, samples, hopReached));
+            if (hopReached)
             {
+                reached = true;
                 break;
             }
         }
 
+        return new TraceRouteResult(address, addressSource, hops, reached);
+    }
+
+    private static string FormatTraceRoute(TraceRouteResult traceRoute)
+    {
+        var builder = new StringBuilder();
+        foreach (var hop in traceRoute.Hops)
+        {
+            builder.AppendLine($"  {hop.Hop,2}  {string.Join("  ", hop.Samples),-26} {hop.Address}");
+        }
+
+        builder.AppendLine(traceRoute.Reached
+            ? $"路由结果：已到达目标 {traceRoute.TargetAddress}。"
+            : $"路由结果：15跳内未收到目标 {traceRoute.TargetAddress} 的ICMP响应；星号不等同于链路中断，需结合TCP/TLS/HTTP判断。");
         return builder.ToString();
     }
 
     private static async Task<PingReply?> SendPingAsync(
         IPAddress address,
         int? ttl,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int timeoutMilliseconds = 1200)
     {
         try
         {
             using var ping = new Ping();
             var options = ttl.HasValue ? new PingOptions(ttl.Value, true) : null;
-            var task = ping.SendPingAsync(address, 1200, new byte[32], options);
+            var task = ping.SendPingAsync(address, timeoutMilliseconds, new byte[32], options);
             return await task.WaitAsync(cancellationToken);
         }
         catch (Exception ex) when (ex is PingException or OperationCanceledException or InvalidOperationException)

@@ -22,9 +22,9 @@ test('api.lyfz.net 根路径5xx按网络正常处理', () => {
 test('其他域名5xx保留服务警告', () => {
   equal(targetConclusion(healthyResult(TARGETS[0], 503)), '警告：网络可达，但服务返回5xx');
 });
-test('模式仅允许快速、5分钟、10分钟', () => {
-  [0, 5, 10].forEach((monitorMinutes) => validateOptions({ outputDirectory: path.resolve('.'), storeName: '', carrier: '', monitorMinutes }));
-  throws(() => validateOptions({ outputDirectory: path.resolve('.'), storeName: '', carrier: '', monitorMinutes: 1 }));
+test('模式仅允许快速、1分钟、5分钟、10分钟', () => {
+  [0, 1, 5, 10].forEach((monitorMinutes) => validateOptions({ outputDirectory: path.resolve('.'), storeName: '', carrier: '', monitorMinutes }));
+  throws(() => validateOptions({ outputDirectory: path.resolve('.'), storeName: '', carrier: '', monitorMinutes: 2 }));
 });
 test('额外诊断域名支持URL、中文域名、去重并保留13个默认项', () => {
   const parsed = parseExtraDomains('https://Example.com/path, example.com\n例子.公司');

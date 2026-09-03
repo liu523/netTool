@@ -109,7 +109,7 @@ async function systemHttpProbe(host, signal) {
 
 function sanitizeOptions(value) {
   const raw = value && typeof value === 'object' ? value : {};
-  const monitorMinutes = [0, 5, 10].indexOf(Number(raw.monitorMinutes)) >= 0 ? Number(raw.monitorMinutes) : 0;
+  const monitorMinutes = [0, 1, 5, 10].indexOf(Number(raw.monitorMinutes)) >= 0 ? Number(raw.monitorMinutes) : 0;
   return {
     outputDirectory: path.join(app.getPath('documents'), 'LYFZ-NetDiag-Electron', 'Logs'),
     storeName: String(raw.storeName || '').replace(/[\r\n\t]/g, ' ').slice(0, 80),
@@ -130,7 +130,7 @@ async function runAutomatic() {
     const result = await runner.run({
       outputDirectory, storeName: '自动测试', carrier: '未知',
       extraDomains: domainsArgument ? domainsArgument.slice('--domains='.length) : '',
-      monitorMinutes: [5, 10].indexOf(monitorMinutes) >= 0 ? monitorMinutes : 0
+      monitorMinutes: [1, 5, 10].indexOf(monitorMinutes) >= 0 ? monitorMinutes : 0
     },
       () => {}, new AbortController().signal);
     fs.writeFileSync(path.join(outputDirectory, 'auto-result.json'), JSON.stringify(result, null, 2), 'utf8');

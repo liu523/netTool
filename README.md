@@ -13,10 +13,11 @@
 - 系统 DNS 结果，以及网络接口 DNS、`223.5.5.5`、`119.29.29.29` 的原生 UDP DNS 查询
 - 每个解析节点的 Ping、TCP 443、TLS/SNI、证书和强制节点 HTTP 测试
 - 使用系统 DNS/系统代理的 HTTP 对照测试
-- 当前节点失败时自动执行内置 ICMP 路由跟踪
+- 对每个诊断域名执行内置 ICMP 路由跟踪（最多15跳、每跳3次探测）
 - 对利亚方舟域名执行配置健康 IP 对照，并识别历史异常节点 `113.215.230.101`
 - 覆盖全部利亚方舟业务域名及腾讯验证码、微信开放平台依赖
-- 单次测试、连续1分钟、5分钟和10分钟四种模式
+- 默认保留全部内置域名，并允许临时增加最多20个额外诊断域名
+- 快速诊断一次、连续1分钟、连续5分钟和连续10分钟四种模式
 - 自有域名每10秒、第三方域名每60秒的CSV时间序列
 - DNS IP变化、状态变化、故障恢复事件及变化时自动深度复测
 - 默认网关基线、公网出口IP变化和网卡错误/丢弃计数差值
@@ -38,7 +39,13 @@ dotnet run --project .\src\LYFZ.NetDiag\LYFZ.NetDiag.csproj
 dotnet run --project .\src\LYFZ.NetDiag\LYFZ.NetDiag.csproj -- --auto --output .\test-logs
 ```
 
-执行连续监测（`--monitor-minutes` 只接受 `5` 或 `10`）：
+增加临时诊断域名（可用逗号、分号、空格或换行分隔，内置域名不会被替换）：
+
+```powershell
+dotnet run --project .\src\LYFZ.NetDiag\LYFZ.NetDiag.csproj -- --auto --output .\test-logs --domains "example.com,https://service.example.com/path"
+```
+
+执行连续监测（`--monitor-minutes` 只接受 `1`、`5` 或 `10`）：
 
 ```powershell
 dotnet run --project .\src\LYFZ.NetDiag\LYFZ.NetDiag.csproj -- --auto --output .\test-logs --monitor-minutes 5

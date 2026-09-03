@@ -23,6 +23,7 @@
         <label>额外诊断域名（选填）<textarea id="extraDomains" maxlength="1200" rows="3" placeholder="例如：example.com&#10;多个域名可用换行、逗号或空格分隔"></textarea><small class="field-help">始终检测13个默认域名；这里最多可追加20个。</small></label>
         <fieldset><legend>检测模式</legend>
           <label class="mode selected"><input type="radio" name="mode" value="0" checked><span><strong>快速诊断一次</strong><small>约1～3分钟，适合故障正在发生时</small></span></label>
+          <label class="mode"><input type="radio" name="mode" value="1"><span><strong>连续检测1分钟</strong><small>快速观察短时故障、恢复和IP变化</small></span></label>
           <label class="mode"><input type="radio" name="mode" value="5"><span><strong>连续检测5分钟</strong><small>捕获短时故障、恢复和IP变化</small></span></label>
           <label class="mode"><input type="radio" name="mode" value="10"><span><strong>连续检测10分钟</strong><small>适合较难复现的间歇性问题</small></span></label>
         </fieldset>

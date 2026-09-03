@@ -8,6 +8,7 @@ internal sealed class MainForm : Form
     private readonly TextBox _storeNameTextBox = new();
     private readonly ComboBox _carrierComboBox = new();
     private readonly ComboBox _modeComboBox = new();
+    private readonly TextBox _extraDomainsTextBox = new();
     private readonly Button _startButton = new();
     private readonly Button _stopButton = new();
     private readonly Button _openReportButton = new();
@@ -24,8 +25,8 @@ internal sealed class MainForm : Form
     {
         Text = "利亚方舟海螺云网络诊断工具";
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(820, 620);
-        Size = new Size(940, 700);
+        MinimumSize = new Size(860, 700);
+        Size = new Size(980, 790);
         Font = new Font("Microsoft YaHei UI", 9F);
         AutoScaleMode = AutoScaleMode.Dpi;
 
@@ -34,7 +35,7 @@ internal sealed class MainForm : Form
 
     private void BuildLayout()
     {
-        var headerPanel = new Panel { Dock = DockStyle.Top, Height = 230, Padding = new Padding(18, 14, 18, 8) };
+        var headerPanel = new Panel { Dock = DockStyle.Top, Height = 330, Padding = new Padding(18, 14, 18, 8) };
         var title = new Label
         {
             AutoSize = true,
@@ -70,16 +71,30 @@ internal sealed class MainForm : Form
         _modeComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         _modeComboBox.Items.AddRange([
             "快速诊断一次",
-             "连续检测1分钟(推荐)",
+            "连续检测1分钟",
             "连续检测5分钟",
             "连续检测10分钟"
         ]);
         _modeComboBox.SelectedIndex = 0;
 
+        var extraDomainsLabel = new Label
+        {
+            Text = $"额外诊断域名（选填，最多 {DomainCatalog.MaxExtraDomains} 个；始终保留 {DomainCatalog.All.Count} 个默认域名）：",
+            AutoSize = true,
+            Location = new Point(20, 184)
+        };
+        _extraDomainsTextBox.Location = new Point(20, 207);
+        _extraDomainsTextBox.Size = new Size(920, 62);
+        _extraDomainsTextBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        _extraDomainsTextBox.Multiline = true;
+        _extraDomainsTextBox.ScrollBars = ScrollBars.Vertical;
+        _extraDomainsTextBox.AcceptsReturn = true;
+        _extraDomainsTextBox.PlaceholderText = "每行一个域名，也可用逗号或空格分隔；支持输入 https://example.com/path";
+
         var privacy = new Label
         {
             AutoSize = false,
-            Location = new Point(20, 188),
+            Location = new Point(20, 282),
             Size = new Size(870, 36),
             ForeColor = Color.DimGray,
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
@@ -88,7 +103,7 @@ internal sealed class MainForm : Form
 
         headerPanel.Controls.AddRange([
             title, instructions, storeLabel, _storeNameTextBox, carrierLabel, _carrierComboBox,
-            modeLabel, _modeComboBox, privacy
+            modeLabel, _modeComboBox, extraDomainsLabel, _extraDomainsTextBox, privacy
         ]);
 
         _outputTextBox.Dock = DockStyle.Fill;
@@ -144,6 +159,18 @@ internal sealed class MainForm : Form
 
     private async void StartButton_Click(object? sender, EventArgs e)
     {
+        IReadOnlyList<string> extraDomains;
+        try
+        {
+            extraDomains = DomainCatalog.ParseExtraDomains(_extraDomainsTextBox.Text);
+        }
+        catch (FormatException ex)
+        {
+            MessageBox.Show(this, ex.Message, "额外诊断域名无效", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            _extraDomainsTextBox.Focus();
+            return;
+        }
+
         _startButton.Enabled = false;
         _stopButton.Enabled = true;
         _openReportButton.Enabled = false;
@@ -151,7 +178,9 @@ internal sealed class MainForm : Form
         _storeNameTextBox.Enabled = false;
         _carrierComboBox.Enabled = false;
         _modeComboBox.Enabled = false;
+        _extraDomainsTextBox.Enabled = false;
         _progressBar.Value = 0;
+        _progressBar.Maximum = Math.Max(1, DomainCatalog.All.Count + extraDomains.Count);
         _outputTextBox.Clear();
         _lastLogPath = null;
         _lastHtmlReportPath = null;
@@ -185,7 +214,8 @@ internal sealed class MainForm : Form
                     _carrierComboBox.Text,
                     true,
                     monitorDuration,
-                    TimeSpan.FromSeconds(10)),
+                    TimeSpan.FromSeconds(10),
+                    extraDomains),
                 progress,
                 _cancellation.Token);
 
@@ -235,6 +265,7 @@ internal sealed class MainForm : Form
             _storeNameTextBox.Enabled = true;
             _carrierComboBox.Enabled = true;
             _modeComboBox.Enabled = true;
+            _extraDomainsTextBox.Enabled = true;
             if (_closeAfterCancellation)
             {
                 BeginInvoke(Close);

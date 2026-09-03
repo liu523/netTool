@@ -42,6 +42,7 @@ internal sealed partial class DiagnosticRunner
         DiagnosticLogger logger,
         NetworkSnapshot networkSnapshot,
         DiagnosticRunOptions options,
+        IReadOnlyList<DiagnosticTarget> diagnosticTargets,
         CancellationToken cancellationToken)
     {
         var result = new MonitoringResult
@@ -91,8 +92,8 @@ internal sealed partial class DiagnosticRunner
 
                 var includeThirdParty = round == 1 || elapsed == TimeSpan.Zero ||
                                         elapsed.TotalSeconds / 60 >= Math.Floor((elapsed - interval).TotalSeconds / 60) + 1;
-                var targets = DomainCatalog.All
-                    .Where(target => target.IsFirstParty || includeThirdParty)
+                var targets = diagnosticTargets
+                    .Where(target => target.IsFirstParty || target.IsExtra || includeThirdParty)
                     .ToArray();
 
                 using var concurrency = new SemaphoreSlim(4, 4);
@@ -171,7 +172,7 @@ internal sealed partial class DiagnosticRunner
 
                 foreach (var host in deepChecks.Take(4))
                 {
-                    var target = DomainCatalog.All.First(item =>
+                    var target = diagnosticTargets.First(item =>
                         string.Equals(item.Host, host, StringComparison.OrdinalIgnoreCase));
                     await logger.WriteAsync(
                         $"监测到 {host} 状态变化，自动执行完整深度复测。",
@@ -532,7 +533,7 @@ internal sealed partial class DiagnosticRunner
             }
 
             var monitoredFailures = monitoring.Aggregates
-                .Where(item => DomainCatalog.All.Any(target => string.Equals(target.Host, item.Key, StringComparison.OrdinalIgnoreCase)))
+                .Where(item => results.Any(result => string.Equals(result.Target.Host, item.Key, StringComparison.OrdinalIgnoreCase)))
                 .Where(item => item.Value.Failures > 0)
                 .Select(item => $"{item.Key}({item.Value.Failures}/{item.Value.Samples})")
                 .ToList();

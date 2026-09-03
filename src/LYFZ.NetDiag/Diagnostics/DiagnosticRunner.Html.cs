@@ -72,6 +72,7 @@ internal sealed partial class DiagnosticRunner
 <style>
 :root{color-scheme:light;--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#667085;--line:#e4e9f2;--ok:#16865b;--okbg:#e9f8f1;--warn:#b66a00;--warnbg:#fff4df;--bad:#c83d4b;--badbg:#ffebed;--info:#2864d7;--infobg:#eaf1ff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Microsoft YaHei UI","PingFang SC",Arial,sans-serif;line-height:1.55}.wrap{max-width:1240px;margin:0 auto;padding:28px 20px 56px}.hero{color:#fff;border-radius:20px;padding:28px 30px;background:linear-gradient(135deg,#153e75,#2463c7 58%,#168a88);box-shadow:0 16px 38px rgba(28,65,130,.22)}h1{font-size:28px;margin:0 0 8px}.hero p{margin:0;color:#dfeaff}.hero-row{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}.hero .badge{font-size:16px;padding:8px 15px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.35)}.toolbar{margin-top:16px}.button{border:0;border-radius:9px;background:#fff;color:#174a91;padding:9px 14px;font-weight:700;cursor:pointer}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0}.metric,.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 5px 18px rgba(34,54,91,.06)}.metric{padding:16px}.metric .value{font-size:26px;font-weight:800}.metric .label{font-size:13px;color:var(--muted)}.card{padding:20px;margin:16px 0}.card h2{font-size:19px;margin:0 0 14px}.card h3{font-size:15px;margin:18px 0 8px}.meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 22px}.meta div{min-width:0}.meta strong{display:block;font-size:12px;color:var(--muted);font-weight:600}.badge{display:inline-flex;align-items:center;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800;white-space:nowrap}.ok{color:var(--ok);background:var(--okbg)}.warn{color:var(--warn);background:var(--warnbg)}.bad{color:var(--bad);background:var(--badbg)}.info{color:var(--info);background:var(--infobg)}.muted{color:var(--muted);background:#f1f3f7}.analysis{margin:0;padding-left:22px}.analysis li{margin:9px 0;padding-left:3px}.hint{border-left:4px solid var(--info);background:var(--infobg);padding:12px 14px;border-radius:8px;margin-top:12px;color:#244a86}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:11px}table{border-collapse:collapse;width:100%;min-width:850px;background:#fff}th,td{text-align:left;border-bottom:1px solid var(--line);padding:10px 11px;vertical-align:top;font-size:13px}th{position:sticky;top:0;background:#f7f9fc;color:#475467;font-weight:750}tr:last-child td{border-bottom:0}.host{font-weight:800;color:#234a84}.sub{display:block;color:var(--muted);font-size:11px;margin-top:3px}.files{display:flex;flex-wrap:wrap;gap:10px}.file{display:block;text-decoration:none;border:1px solid #cdd9ee;background:#f7faff;color:#2456a4;border-radius:10px;padding:11px 14px;font-weight:700}.file:hover{background:#edf4ff}details{border:1px solid var(--line);border-radius:10px;background:#fbfcfe}summary{cursor:pointer;padding:13px 15px;font-weight:750}pre{white-space:pre-wrap;word-break:break-word;margin:0;border-top:1px solid var(--line);padding:16px;background:#111827;color:#d9e2f2;border-radius:0 0 10px 10px;font:12px/1.55 Consolas,"Microsoft YaHei UI",monospace;max-height:680px;overflow:auto}.footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px}@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.meta{grid-template-columns:1fr 1fr}}@media(max-width:560px){.wrap{padding:12px 9px 36px}.hero{padding:20px 18px;border-radius:14px}h1{font-size:22px}.grid,.meta{grid-template-columns:1fr}.card{padding:15px}}@media print{body{background:#fff}.wrap{max-width:none;padding:0}.hero,.card,.metric{box-shadow:none}.toolbar,details{display:none}.table-wrap{overflow:visible}table{min-width:0}th{position:static}}
+.card details+details{margin-top:10px}
 </style>
 """);
         builder.AppendLine("</head><body><main class=\"wrap\">");
@@ -99,6 +100,7 @@ internal sealed partial class DiagnosticRunner
         AppendMeta(builder, "工具版本", assemblyVersion);
         AppendMeta(builder, "系统 / 进程架构", $"{RuntimeInformation.OSArchitecture} / {RuntimeInformation.ProcessArchitecture}");
         AppendMeta(builder, "设备名称", Environment.MachineName);
+        AppendMeta(builder, "诊断域名", $"共 {results.Count} 个（默认 {DomainCatalog.All.Count} 个，额外 {results.Count(result => result.Target.IsExtra)} 个）");
         AppendMeta(builder, "DNS服务器", JoinOrDash(networkSnapshot.DnsServers.Select(item => item.ToString())));
         AppendMeta(builder, "默认网关", JoinOrDash(networkSnapshot.Gateways.Select(item => item.ToString())));
         builder.AppendLine("</div></section>");
@@ -112,6 +114,7 @@ internal sealed partial class DiagnosticRunner
 
         AppendGatewaySection(builder, lanBaseline);
         AppendTargetSection(builder, results);
+        AppendTraceRouteSection(builder, results);
         AppendMonitoringSection(builder, monitoring);
         AppendArtifactSection(builder, logPath, monitoring?.CsvPath);
 
@@ -227,6 +230,44 @@ internal sealed partial class DiagnosticRunner
             }
 
             builder.AppendLine("</tbody></table></div>");
+        }
+
+        builder.AppendLine("</section>");
+    }
+
+    private static void AppendTraceRouteSection(StringBuilder builder, IReadOnlyList<TargetResult> results)
+    {
+        builder.AppendLine("<section class=\"card\"><h2>路由跟踪诊断</h2>");
+        builder.AppendLine("<p class=\"hint\">每个诊断域名选择一个当前解析IP执行最多15跳、每跳3次的ICMP路由探测。星号只表示该跳未响应ICMP，不能单独判定链路中断。</p>");
+
+        if (results.Count == 0)
+        {
+            builder.AppendLine("<p><span class=\"badge warn\">没有路由结果</span> 检测可能在域名测试开始前被停止。</p></section>");
+            return;
+        }
+
+        foreach (var result in results)
+        {
+            var traceRoute = result.TraceRoute;
+            var label = traceRoute is null ? "未执行" : traceRoute.Reached ? "已到达目标" : "未确认到达";
+            var css = traceRoute is null ? "muted" : traceRoute.Reached ? "ok" : "info";
+            var targetAddress = traceRoute?.TargetAddress.ToString() ?? "无可用IP";
+            builder.AppendLine("<details>" +
+                               $"<summary><span class=\"host\">{Html(result.Target.Host)}</span> · " +
+                               $"目标 {Html(targetAddress)} · <span class=\"badge {css}\">{Html(label)}</span></summary>");
+
+            if (traceRoute is null)
+            {
+                builder.AppendLine($"<pre>{Html(EmptyAsDash(result.TraceRouteUnavailableReason))}</pre></details>");
+                continue;
+            }
+
+            var routeText = new StringBuilder();
+            routeText.AppendLine($"目标IP：{traceRoute.TargetAddress}");
+            routeText.AppendLine($"IP来源：{traceRoute.AddressSource}");
+            routeText.AppendLine("跳数  三次延迟样本                 路由节点");
+            routeText.Append(FormatTraceRoute(traceRoute));
+            builder.AppendLine($"<pre>{Html(routeText.ToString())}</pre></details>");
         }
 
         builder.AppendLine("</section>");

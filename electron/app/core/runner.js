@@ -454,7 +454,7 @@ async function mapLimit(items, concurrency, worker, signal) {
 
 function validateOptions(options) {
   if (!options || typeof options.outputDirectory !== 'string' || !path.isAbsolute(options.outputDirectory)) throw new Error('输出目录无效');
-  if ([0, 5, 10].indexOf(Number(options.monitorMinutes)) < 0) throw new Error('检测时长只允许快速、5分钟或10分钟');
+  if ([0, 1, 5, 10].indexOf(Number(options.monitorMinutes)) < 0) throw new Error('检测时长只允许快速、1分钟、5分钟或10分钟');
   options.storeName = String(options.storeName || '').slice(0, 80);
   options.carrier = String(options.carrier || '未知').slice(0, 40);
   options.extraDomains = parseExtraDomains(options.extraDomains);

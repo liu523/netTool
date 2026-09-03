@@ -8,7 +8,8 @@ internal sealed record DiagnosticTarget(
     IPAddress? ComparisonAddress,
     bool IsFirstParty,
     string Notes = "",
-    bool TreatServerErrorAsNormal = false);
+    bool TreatServerErrorAsNormal = false,
+    bool IsExtra = false);
 
 internal sealed record DiagnosticRunOptions(
     string OutputDirectory,
@@ -16,7 +17,8 @@ internal sealed record DiagnosticRunOptions(
     string Carrier,
     bool OpenFolderWhenComplete,
     TimeSpan MonitorDuration,
-    TimeSpan MonitorInterval);
+    TimeSpan MonitorInterval,
+    IReadOnlyList<string>? ExtraDomains = null);
 
 internal sealed record DiagnosticProgress(
     string Message,
@@ -74,6 +76,8 @@ internal sealed class TargetResult
     public bool ComparisonSucceeded { get; set; }
     public bool ResolvedHistoricalBadEdge { get; set; }
     public string? FailureReason { get; set; }
+    public TraceRouteResult? TraceRoute { get; set; }
+    public string TraceRouteUnavailableReason { get; set; } = string.Empty;
 
     public string Conclusion
     {
@@ -137,6 +141,18 @@ internal sealed record PingTestResult(
     int Received,
     double? AverageMilliseconds,
     string Detail);
+
+internal sealed record TraceRouteHopResult(
+    int Hop,
+    string Address,
+    IReadOnlyList<string> Samples,
+    bool Reached);
+
+internal sealed record TraceRouteResult(
+    IPAddress TargetAddress,
+    string AddressSource,
+    IReadOnlyList<TraceRouteHopResult> Hops,
+    bool Reached);
 
 internal sealed record DnsAnswer(string Type, string Value, uint Ttl);
 
