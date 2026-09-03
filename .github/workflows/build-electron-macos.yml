@@ -10,17 +10,18 @@ jobs:
       run:
         working-directory: electron
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
+          package-manager-cache: false
       - name: Enable pnpm
         run: corepack enable && corepack prepare pnpm@11.19.0 --activate
       - name: Test and package Intel and Apple Silicon builds
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: sh ./scripts/build-release-macos.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: LYFZ-NetDiag-Electron-macOS-unsigned
           path: electron/release/final-macos-*/*
