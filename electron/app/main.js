@@ -14,10 +14,10 @@ let lastResult = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1080,
-    height: 900,
-    minWidth: 860,
-    minHeight: 700,
+    width: 1060,
+    height: 800,
+    minWidth: 840,
+    minHeight: 650,
     show: false,
     title: '利亚方舟海螺云网络诊断工具',
     backgroundColor: '#f3f6fa',

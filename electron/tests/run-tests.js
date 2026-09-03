@@ -11,6 +11,21 @@ const { normalizeRouteTrace, recordSample, validateOptions } = require('../app/c
 const { safeName } = require('../app/core/utils');
 
 let passed = 0;
+test('Electron 主界面使用完整产品名称', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'app', 'renderer', 'index.html'), 'utf8');
+  truthy(html.includes('<h1>利亚方舟海螺云网络诊断工具</h1>'));
+});
+test('Electron 检测模式使用紧凑下拉框并保留四种选项', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'app', 'renderer', 'index.html'), 'utf8');
+  truthy(html.includes('<select id="mode">'));
+  ['0', '1', '5', '10'].forEach((value) => truthy(html.includes(`option value="${value}"`)));
+});
+test('Electron 主界面宽高随窗口最大化自适应', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'app', 'renderer', 'styles.css'), 'utf8');
+  truthy(css.includes('.shell{width:100%;max-width:none}'));
+  truthy(css.includes('height:calc(100vh - 180px)'));
+  truthy(css.includes('.workspace{align-items:stretch}'));
+});
 test('域名目录完整', () => {
   equal(TARGETS.length, 13);
   truthy(TARGETS.some((item) => item.host === 'api.lyfz.net' && item.treatServerErrorAsNormal));

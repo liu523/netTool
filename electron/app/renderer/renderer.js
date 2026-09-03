@@ -2,7 +2,7 @@
 
 const elements = {
   storeName: document.getElementById('storeName'), carrier: document.getElementById('carrier'),
-  extraDomains: document.getElementById('extraDomains'),
+  extraDomains: document.getElementById('extraDomains'), mode: document.getElementById('mode'),
   start: document.getElementById('start'), cancel: document.getElementById('cancel'),
   status: document.getElementById('status'), counter: document.getElementById('counter'),
   progress: document.getElementById('progress'), output: document.getElementById('output'),
@@ -19,10 +19,6 @@ const bridge = window.netdiag || {
   openFolder: async () => false
 };
 
-document.querySelectorAll('input[name="mode"]').forEach((radio) => radio.addEventListener('change', () => {
-  document.querySelectorAll('.mode').forEach((label) => label.classList.toggle('selected', label.querySelector('input').checked));
-}));
-
 bridge.appInfo().then((info) => { elements.version.textContent = `v${info.version} · ${info.platform}-${info.arch}`; });
 bridge.onProgress((progress) => {
   const total = Math.max(1, Number(progress.total || 1));
@@ -38,12 +34,11 @@ elements.start.addEventListener('click', async () => {
   elements.output.textContent = '';
   addLine('正在采集当前网络现场，请保持故障状态……', 'muted');
   try {
-    const selected = document.querySelector('input[name="mode"]:checked');
     const result = await bridge.start({
       storeName: elements.storeName.value,
       carrier: elements.carrier.value,
       extraDomains: elements.extraDomains.value,
-      monitorMinutes: Number(selected.value)
+      monitorMinutes: Number(elements.mode.value)
     });
     elements.stateDot.className = 'state-dot done';
     elements.status.textContent = result.cancelled ? '检测已停止，已保存部分报告' : '检测完成，请发送HTML、TXT和CSV';
@@ -75,7 +70,7 @@ function setRunning(running, preserveState) {
   elements.storeName.disabled = running;
   elements.carrier.disabled = running;
   elements.extraDomains.disabled = running;
-  document.querySelectorAll('input[name="mode"]').forEach((item) => { item.disabled = running; });
+  elements.mode.disabled = running;
   if (running) {
     elements.openReport.disabled = true;
     elements.openFolder.disabled = true;
