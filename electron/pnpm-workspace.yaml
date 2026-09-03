@@ -1,0 +1,12 @@
+packages:
+  - .
+
+allowBuilds:
+  electron: true
+  electron-builder: true
+  electron-winstaller: true
+
+blockExoticSubdeps: false
+
+minimumReleaseAgeExclude:
+  - electron@44.1.1

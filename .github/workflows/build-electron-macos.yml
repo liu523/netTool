@@ -1,0 +1,27 @@
+name: Build Electron macOS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: electron
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enable pnpm
+        run: corepack enable && corepack prepare pnpm@11.19.0 --activate
+      - name: Test and package Intel and Apple Silicon builds
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: sh ./scripts/build-release-macos.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LYFZ-NetDiag-Electron-macOS-unsigned
+          path: electron/release/final-macos-*/*
+          if-no-files-found: error

@@ -1,0 +1,11 @@
+node_modules/
+.legacy-stage/
+release/
+test-output/
+native/bin/**
+!native/bin/.gitkeep
+!native/bin/win32-x64/
+!native/bin/win32-x64/netdiag-native.exe
+!native/bin/win32-x86/
+!native/bin/win32-x86/netdiag-native.exe
+*.log

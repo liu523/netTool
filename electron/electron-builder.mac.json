@@ -1,0 +1,31 @@
+{
+  "appId": "com.lyfz.netdiag",
+  "productName": "利亚方舟海螺云网络诊断工具",
+  "asar": true,
+  "files": [
+    "app/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "native/bin",
+      "to": "native",
+      "filter": [
+        "**/*"
+      ]
+    }
+  ],
+  "directories": {
+    "output": "release/modern"
+  },
+  "mac": {
+    "artifactName": "LYFZ-NetDiag-Electron-${version}-mac-${arch}.${ext}",
+    "category": "public.app-category.utilities",
+    "target": [
+      "dmg",
+      "zip"
+    ],
+    "identity": null,
+    "hardenedRuntime": false,
+    "gatekeeperAssess": false
+  }
+}

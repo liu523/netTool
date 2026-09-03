@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>利亚方舟海螺云网络诊断工具</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+      <div><p class="eyebrow">LYFZ NETWORK DIAGNOSTICS</p><h1>海螺云网络诊断工具</h1><p>请在系统无法访问时立即运行。检测前不要重启路由器、清理DNS或切换网络。</p></div>
+      <div id="version" class="version">正在读取版本</div>
+    </header>
+
+    <section class="workspace">
+      <aside class="settings card">
+        <h2>诊断设置</h2>
+        <label>门店名称（选填）<input id="storeName" maxlength="80" placeholder="例如：三亚××店"></label>
+        <label>宽带运营商<select id="carrier"><option>未知</option><option>中国电信</option><option>中国联通</option><option>中国移动</option><option>广电网络</option><option>其他</option></select></label>
+        <label>额外诊断域名（选填）<textarea id="extraDomains" maxlength="1200" rows="3" placeholder="例如：example.com&#10;多个域名可用换行、逗号或空格分隔"></textarea><small class="field-help">始终检测13个默认域名；这里最多可追加20个。</small></label>
+        <fieldset><legend>检测模式</legend>
+          <label class="mode selected"><input type="radio" name="mode" value="0" checked><span><strong>快速诊断一次</strong><small>约1～3分钟，适合故障正在发生时</small></span></label>
+          <label class="mode"><input type="radio" name="mode" value="5"><span><strong>连续检测5分钟</strong><small>捕获短时故障、恢复和IP变化</small></span></label>
+          <label class="mode"><input type="radio" name="mode" value="10"><span><strong>连续检测10分钟</strong><small>适合较难复现的间歇性问题</small></span></label>
+        </fieldset>
+        <button id="start" class="primary">开始检测</button>
+        <button id="cancel" class="secondary" disabled>停止检测</button>
+      </aside>
+
+      <section class="results card">
+        <div class="result-head"><div><span id="stateDot" class="state-dot"></span><strong id="status">准备就绪</strong></div><span id="counter">0 / 13</span></div>
+        <div class="progress-track"><div id="progress" class="progress-bar"></div></div>
+        <div id="output" class="console" role="log" aria-live="polite"><p class="muted">等待开始检测……</p></div>
+        <div class="actions"><button id="openReport" disabled>打开分析报告</button><button id="openFolder" disabled>打开日志文件夹</button></div>
+      </section>
+    </section>
+
+    <footer><strong>隐私说明：</strong>日志包含设备名、内网IP、DNS、网关和公网出口IP；不采集账号、密码、Cookie或业务内容。</footer>
+  </main>
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+.dotnet-cli/
+.nuget/
+.runtime-packages/
+src/**/bin/
+src/**/obj/
+test-logs/
+dist-test-logs/
+dist-test-logs-x86/
+dist/
+electron/node_modules/
+electron/.legacy-stage/
+electron/release/
+electron/test-output*/
+electron/*.log
+.DS_Store
+.vs/

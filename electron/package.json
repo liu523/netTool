@@ -1,0 +1,64 @@
+{
+  "name": "lyfz-netdiag-electron",
+  "version": "2.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "description": "利亚方舟海螺云跨平台网络诊断工具",
+  "main": "app/main.js",
+  "author": "利亚方舟",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "start": "electron .",
+    "start:auto": "electron . --auto",
+    "test": "node tests/run-tests.js",
+    "prepare:legacy": "node scripts/prepare-legacy.js",
+    "dist:win": "electron-builder --win portable --x64",
+    "dist:mac": "electron-builder --config electron-builder.mac.json --mac dmg zip --x64 --arm64",
+    "dist:legacy:win": "node scripts/build-legacy.js"
+  },
+  "devDependencies": {
+    "electron": "44.1.1",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "com.lyfz.netdiag",
+    "productName": "利亚方舟海螺云网络诊断工具",
+    "asar": true,
+    "electronDist": "node_modules/electron/dist",
+    "files": [
+      "app/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "native/bin",
+        "to": "native",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "directories": {
+      "output": "release/modern"
+    },
+    "win": {
+      "artifactName": "LYFZ-NetDiag-Electron-${version}-win-${arch}.${ext}",
+      "signAndEditExecutable": false,
+      "target": [
+        "portable"
+      ]
+    },
+    "mac": {
+      "artifactName": "LYFZ-NetDiag-Electron-${version}-mac-${arch}.${ext}",
+      "category": "public.app-category.utilities",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    }
+  }
+}
